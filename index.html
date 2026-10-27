@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,155 +12,444 @@ header{padding:22px 16px;background:#10233a;border-bottom:1px solid #29415d}
 header h1{margin:0;color:#65c8ff;letter-spacing:2px}
 header p{margin:7px 0 0;color:#a7b8cc}
 main{max-width:1050px;margin:auto;padding:16px}
-.notice,.panel{padding:16px;border:1px solid #29415d;border-radius:14px;margin-bottom:16px;background:#101e31}
-.notice{background:#302617;color:#ffe7b7;font-size:14px}
+.panel{padding:16px;border:1px solid #29415d;border-radius:14px;margin-bottom:16px;background:#101e31}
+.notice{padding:13px;background:#302617;color:#ffe7b7;border-radius:10px;font-size:14px;margin-bottom:16px}
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 button,select{padding:12px;border:1px solid #34516f;border-radius:9px;background:#10263f;color:white;font-size:15px}
 button{cursor:pointer}
 button.active{background:#0877bd}
-#chart{height:470px}
-#rating{height:380px}
-.widget{width:100%;height:100%}
-.widget iframe{width:100%;height:100%;border:0}
-.small{color:#a7b8cc;font-size:13px}
-@media(max-width:600px){#chart{height:390px}#rating{height:350px}}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.metric{background:#0a1728;border:1px solid #29415d;padding:14px;border-radius:10px;min-width:0}
+.metric strong{display:block;font-size:13px;color:#a7b8cc;margin-bottom:8px}
+.value{font-size:21px;font-weight:bold;overflow-wrap:anywhere}
+.small{color:#a7b8cc;font-size:13px;line-height:1.5}
+#signal{font-size:27px;font-weight:bold}
+#chart{height:430px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:9px 5px;border-bottom:1px solid #29415d}
+th:first-child,td:first-child{text-align:left}
+.tablewrap{overflow-x:auto}
+.good{color:#5de0a0}
+.bad{color:#ff8989}
+.neutral{color:#ffd479}
+footer{color:#a7b8cc;font-size:12px;padding:12px 0 25px}
+@media(max-width:600px){
+  #chart{height:350px}
+  .grid{grid-template-columns:1fr 1fr}
+  .value{font-size:18px}
+  button,select{font-size:14px}
+}
 </style>
 </head>
 <body>
 <header>
-<h1>🦅 SHAIFAN PRO</h1>
-<p>Independent Market Analysis Dashboard</p>
+  <h1>🦅 SHAIFAN PRO</h1>
+  <p>Real-Data Market Analysis Dashboard</p>
 </header>
+
 <main>
-<div class="notice">
-<strong>Honest analysis only:</strong> Market widgets are provided by TradingView.
-This version does not calculate its own verified probability or guarantee UP/DOWN
-signals. No automatic trades and no broker passwords are required.
-</div>
+  <div class="notice">
+    <strong>Educational analysis only.</strong>
+    Trend scores are indicator votes, NOT probability or verified accuracy.
+    No automatic trades. Provider prices can differ from your broker.
+  </div>
 
-<section class="panel">
-<div class="controls">
-<strong>Market:</strong>
-<button id="gold" class="active">Gold XAU/USD</button>
-<button id="eur">EUR/USD</button>
-<label for="tf">Timeframe:</label>
-<select id="tf">
-<option value="5">5 minutes</option>
-<option value="15" selected>15 minutes</option>
-<option value="60">1 hour</option>
-<option value="240">4 hours</option>
-<option value="D">1 day</option>
-</select>
-<button id="scan">Refresh / Scan</button>
-</div>
-</section>
+  <section class="panel">
+    <div class="controls">
+      <strong>Market:</strong>
+      <button id="gold" class="active">Gold XAU/USD</button>
+      <button id="eur">EUR/USD</button>
+      <label for="tf">Timeframe:</label>
+      <select id="tf">
+        <option value="5m">5 minutes</option>
+        <option value="15m" selected>15 minutes</option>
+        <option value="1h">1 hour</option>
+        <option value="4h">4 hours</option>
+        <option value="1d">1 day</option>
+      </select>
+      <button id="scan">Refresh Analysis</button>
+    </div>
+    <p id="status" class="small">Ready to fetch market candles.</p>
+  </section>
 
-<section class="panel">
-<h2 id="title">Gold XAU/USD Chart</h2>
-<p class="small">Live chart widget, subject to provider availability.</p>
-<div id="chart" class="widget"></div>
-</section>
+  <section class="panel">
+    <h2>Market Analysis</h2>
+    <div class="grid">
+      <div class="metric">
+        <strong>Market</strong>
+        <div id="marketName" class="value">Gold XAU/USD</div>
+      </div>
+      <div class="metric">
+        <strong>Last CLOSED candle price</strong>
+        <div id="price" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>Indicator trend</strong>
+        <div id="signal" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>Indicator score</strong>
+        <div id="score" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>EMA 9 / EMA 21</strong>
+        <div id="ema" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>RSI (14)</strong>
+        <div id="rsi" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>MACD / Signal</strong>
+        <div id="macd" class="value">—</div>
+      </div>
+      <div class="metric">
+        <strong>Data source</strong>
+        <div class="value">BiQuote API</div>
+        <div id="stamp" class="small">Timestamp pending</div>
+      </div>
+    </div>
+    <p id="explanation" class="small">
+      The analysis will appear after market candles load.
+    </p>
+  </section>
 
-<section class="panel">
-<h2>Technical Analysis</h2>
-<p class="small">Third-party indicator summary, not a verified success probability.</p>
-<div id="rating" class="widget"></div>
-</section>
+  <section class="panel">
+    <h2>Live Chart</h2>
+    <p class="small">
+      TradingView chart for visual comparison. Its price feed may differ
+      from the BiQuote data used by this analysis engine.
+    </p>
+    <div id="chart"></div>
+  </section>
 
-<section class="panel">
-<h2>Our next development stage</h2>
-<p>1. Connect actual market candles.</p>
-<p>2. Build our own trend, RSI and MACD analysis engine.</p>
-<p>3. Test historical results before displaying measured probabilities.</p>
-</section>
+  <section class="panel">
+    <h2>Recent Closed Candles</h2>
+    <p class="small">OHLC values received from the selected data endpoint.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>UTC time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th></tr>
+        </thead>
+        <tbody id="candles">
+          <tr><td colspan="5">Waiting for data…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>How the score works</h2>
+    <p class="small">
+      Three indicator votes are used: EMA 9 vs EMA 21, MACD vs signal,
+      and RSI position. A score of +2 or +3 gives UP; -2 or -3 gives
+      DOWN; all other combinations give NEUTRAL.
+      This is a simple rule-based indicator score, not a forecast probability.
+    </p>
+    <p class="small">
+      RSI above 70 or below 30 is treated as an extreme reading and does
+      not automatically count as a directional vote. The latest unfinished
+      candle is excluded from the indicator calculation.
+    </p>
+  </section>
+
+  <footer>
+    SHAIFAN PRO · Independent indicator calculations ·
+    Not financial advice. No guaranteed outcomes.
+  </footer>
 </main>
 
 <script>
-const markets = {
-  gold: {symbol:"OANDA:XAUUSD", name:"Gold XAU/USD"},
-  eur: {symbol:"OANDA:EURUSD", name:"EUR/USD"}
-};
-let selected = "gold";
+"use strict";
 
-function addWidget(target, url, config) {
-  const container = document.getElementById(target);
+const API = "https://biquote.io/api";
+const markets = {
+  gold: {symbol:"XAUUSD", name:"Gold XAU/USD", tv:"OANDA:XAUUSD"},
+  eur:  {symbol:"EURUSD", name:"EUR/USD", tv:"OANDA:EURUSD"}
+};
+
+let selected = "gold";
+let requestNumber = 0;
+
+const $ = id => document.getElementById(id);
+
+function setStatus(message, cls="") {
+  $("status").textContent = message;
+  $("status").className = "small " + cls;
+}
+
+function fmt(value, digits=5) {
+  if (!Number.isFinite(value)) return "—";
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+}
+
+function timeText(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Unknown";
+  return date.toISOString().replace("T", " ").slice(0, 19);
+}
+
+function mean(values) {
+  return values.reduce((a,b) => a+b, 0) / values.length;
+}
+
+function emaSeries(values, period) {
+  const out = Array(values.length).fill(null);
+  if (values.length < period) return out;
+
+  let current = mean(values.slice(0, period));
+  out[period - 1] = current;
+  const multiplier = 2 / (period + 1);
+
+  for (let i = period; i < values.length; i++) {
+    current = values[i] * multiplier + current * (1 - multiplier);
+    out[i] = current;
+  }
+  return out;
+}
+
+function rsiValue(values, period=14) {
+  if (values.length <= period) return null;
+  let gains = 0, losses = 0;
+
+  for (let i=1; i<=period; i++) {
+    const change = values[i] - values[i-1];
+    if (change > 0) gains += change;
+    else losses -= change;
+  }
+
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i=period+1; i<values.length; i++) {
+    const change = values[i] - values[i-1];
+    avgGain = (avgGain*(period-1) + Math.max(change,0)) / period;
+    avgLoss = (avgLoss*(period-1) + Math.max(-change,0)) / period;
+  }
+
+  if (avgLoss === 0) return avgGain === 0 ? 50 : 100;
+  return 100 - 100 / (1 + avgGain / avgLoss);
+}
+
+function calculate(bars) {
+  // API returns newest first; calculations need oldest first.
+  const chronological = [...bars]
+    .filter(b => b && b.isOpen !== true)
+    .filter(b => Number.isFinite(Number(b.close)))
+    .sort((a,b) => new Date(a.openTime) - new Date(b.openTime));
+
+  if (chronological.length < 40) {
+    throw new Error("Not enough CLOSED candles for reliable indicator calculations. Try again later.");
+  }
+
+  const closes = chronological.map(b => Number(b.close));
+  const ema9 = emaSeries(closes, 9);
+  const ema21 = emaSeries(closes, 21);
+
+  // MACD: EMA(12) - EMA(26), with EMA(9) signal line.
+  const e12 = emaSeries(closes, 12);
+  const e26 = emaSeries(closes, 26);
+  const macdLine = closes.map((_,i) =>
+    e12[i] !== null && e26[i] !== null ? e12[i]-e26[i] : null
+  );
+
+  // Build the signal EMA only from valid MACD values.
+  const firstValid = macdLine.findIndex(v => v !== null);
+  const validMacd = macdLine.slice(firstValid);
+  const signalValid = emaSeries(validMacd, 9);
+  const signalLine = Array(closes.length).fill(null);
+
+  signalValid.forEach((v,i) => {
+    signalLine[firstValid+i] = v;
+  });
+
+  const last = closes.length-1;
+  const e9 = ema9[last];
+  const e21 = ema21[last];
+  const m = macdLine[last];
+  const ms = signalLine[last];
+  const rsi = rsiValue(closes,14);
+
+  if ([e9,e21,m,ms,rsi].some(v => !Number.isFinite(v))) {
+    throw new Error("Indicator values are not ready. Fetch more candles.");
+  }
+
+  const votes = [];
+  votes.push(e9 > e21 ? 1 : e9 < e21 ? -1 : 0);
+  votes.push(m > ms ? 1 : m < ms ? -1 : 0);
+  votes.push(rsi > 50 && rsi < 70 ? 1 :
+             rsi < 50 && rsi > 30 ? -1 : 0);
+
+  const score = votes.reduce((a,b) => a+b, 0);
+  const trend = score >= 2 ? "UP" : score <= -2 ? "DOWN" : "NEUTRAL";
+
+  return {
+    bars: chronological,
+    price: closes[last],
+    time: chronological[last].openTime,
+    e9, e21, rsi, macd:m, signal:ms, score, trend,
+    votes
+  };
+}
+
+function showChart() {
+  const market = markets[selected];
+  const tf = $("tf").value;
+  const intervalMap = {"5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"};
+
+  const container = $("chart");
   container.replaceChildren();
 
-  const widget = document.createElement("div");
-  widget.style.width = "100%";
-  widget.style.height = "100%";
+  const outer = document.createElement("div");
+  outer.style.height = "100%";
+  outer.style.width = "100%";
 
   const script = document.createElement("script");
-  script.src = url;
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
   script.async = true;
   script.type = "text/javascript";
-  script.textContent = JSON.stringify(config);
+  script.textContent = JSON.stringify({
+    autosize:true,
+    symbol:market.tv,
+    interval:intervalMap[tf],
+    timezone:"Etc/UTC",
+    theme:"dark",
+    style:"1",
+    locale:"en",
+    allow_symbol_change:false,
+    calendar:false,
+    support_host:"https://www.tradingview.com"
+  });
 
-  widget.appendChild(script);
-  container.appendChild(widget);
+  outer.appendChild(script);
+  container.appendChild(outer);
 }
 
-function render() {
+function showCandles(bars) {
+  const recent = [...bars].reverse().slice(0,5);
+  $("candles").replaceChildren();
+
+  for (const b of recent) {
+    const tr = document.createElement("tr");
+    const values = [
+      timeText(b.openTime),
+      fmt(Number(b.open)),
+      fmt(Number(b.high)),
+      fmt(Number(b.low)),
+      fmt(Number(b.close))
+    ];
+
+    for (const value of values) {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.appendChild(td);
+    }
+    $("candles").appendChild(tr);
+  }
+}
+
+function showAnalysis(result) {
+  $("price").textContent = fmt(result.price);
+  $("signal").textContent = result.trend;
+  $("signal").className = "value " +
+    (result.trend==="UP" ? "good" :
+     result.trend==="DOWN" ? "bad" : "neutral");
+
+  $("score").textContent =
+    (result.score > 0 ? "+" : "") + result.score + " / 3 votes";
+
+  $("ema").textContent = fmt(result.e9) + " / " + fmt(result.e21);
+  $("rsi").textContent = result.rsi.toFixed(2);
+  $("macd").textContent = fmt(result.macd,6) + " / " + fmt(result.signal,6);
+  $("stamp").textContent = "Closed candle UTC: " + timeText(result.time);
+
+  const explanations = [];
+  explanations.push("EMA " + (result.votes[0] > 0 ? "bullish" :
+    result.votes[0] < 0 ? "bearish" : "neutral"));
+  explanations.push("MACD " + (result.votes[1] > 0 ? "bullish" :
+    result.votes[1] < 0 ? "bearish" : "neutral"));
+  explanations.push("RSI " + (result.votes[2] > 0 ? "bullish" :
+    result.votes[2] < 0 ? "bearish" : "neutral"));
+
+  $("explanation").textContent =
+    "Rule-based result: " + explanations.join(" · ") +
+    ". This is not a probability and is not a trade instruction.";
+
+  showCandles(result.bars);
+}
+
+async function scan() {
+  const thisRequest = ++requestNumber;
   const market = markets[selected];
-  const tf = document.getElementById("tf").value;
-  document.getElementById("title").textContent = market.name + " Chart";
+  const interval = $("tf").value;
 
-  addWidget(
-    "chart",
-    "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js",
-    {
-      autosize:true,
-      symbol:market.symbol,
-      interval:tf,
-      timezone:"Etc/UTC",
-      theme:"dark",
-      style:"1",
-      locale:"en",
-      allow_symbol_change:true,
-      calendar:false,
-      support_host:"https://www.tradingview.com"
+  $("marketName").textContent = market.name;
+  setStatus("Fetching " + market.symbol + " candles…");
+
+  $("signal").textContent = "Loading…";
+  $("score").textContent = "—";
+  showChart();
+
+  try {
+    const url = API + "/" + market.symbol +
+      "/ohlc?interval=" + encodeURIComponent(interval) + "&limit=100";
+
+    const response = await fetch(url, {cache:"no-store"});
+    if (!response.ok) {
+      throw new Error("API returned HTTP " + response.status);
     }
-  );
 
-  const ratingTime = {
-    "5":"5m","15":"15m","60":"1h","240":"4h","D":"1D"
-  }[tf];
+    const data = await response.json();
 
-  addWidget(
-    "rating",
-    "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js",
-    {
-      interval:ratingTime,
-      width:"100%",
-      isTransparent:true,
-      height:"100%",
-      symbol:market.symbol,
-      showIntervalTabs:true,
-      displayMode:"single",
-      locale:"en",
-      colorTheme:"dark"
+    if (thisRequest !== requestNumber) return;
+    if (data.symbol !== market.symbol || !Array.isArray(data.bars)) {
+      throw new Error("Unexpected API response format.");
     }
-  );
+
+    const result = calculate(data.bars);
+    if (thisRequest !== requestNumber) return;
+
+    showAnalysis(result);
+    setStatus(
+      "Data received · " + data.bars.length +
+      " bars returned · indicators use closed candles.",
+      "good"
+    );
+  } catch (error) {
+    if (thisRequest !== requestNumber) return;
+    $("signal").textContent = "Unavailable";
+    $("signal").className = "value neutral";
+    $("score").textContent = "—";
+    $("explanation").textContent =
+      "Analysis unavailable: " + error.message +
+      ". No signal has been generated.";
+    $("candles").innerHTML =
+      '<tr><td colspan="5">Candles unavailable. Retry later.</td></tr>';
+    setStatus("Could not load/anal yse data: " + error.message, "bad");
+  }
 }
 
-document.getElementById("gold").onclick = function() {
+$("gold").onclick = () => {
   selected = "gold";
-  this.classList.add("active");
-  document.getElementById("eur").classList.remove("active");
-  render();
+  $("gold").classList.add("active");
+  $("eur").classList.remove("active");
+  scan();
 };
 
-document.getElementById("eur").onclick = function() {
+$("eur").onclick = () => {
   selected = "eur";
-  this.classList.add("active");
-  document.getElementById("gold").classList.remove("active");
-  render();
+  $("eur").classList.add("active");
+  $("gold").classList.remove("active");
+  scan();
 };
 
-document.getElementById("tf").onchange = render;
-document.getElementById("scan").onclick = render;
+$("tf").onchange = scan;
+$("scan").onclick = scan;
 
-render();
+scan();
 </script>
 </body>
 </html>
