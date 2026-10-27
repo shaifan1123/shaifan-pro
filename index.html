@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHAIFAN PRO — FX Dashboard</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--line:#263b54;--text:#edf5ff;--muted:#9cb0c8;--green:#36d399;--red:#ff6b7a;--blue:#66b8ff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#102742,var(--bg) 65%);color:var(--text);font:15px system-ui,Arial}
+header,main{max-width:1000px;margin:auto;padding:14px}
+h1{margin:0}
+h1 span{color:var(--blue)}
+.muted,.small,.label{color:var(--muted)}
+.grid,.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{background:linear-gradient(145deg,#12243a,#0c1929);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;min-width:0}
+.label{font-size:12px;text-transform:uppercase}
+.value{font-size:22px;font-weight:700;margin:6px 0;overflow-wrap:anywhere}
+.small{font-size:12px;overflow-wrap:anywhere}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+select,button{background:#172b43;color:var(--text);border:1px solid #36516f;border-radius:8px;padding:10px;font:inherit}
+button{cursor:pointer}
+.primary{background:#1678c8}
+.status{padding:12px;border:1px solid var(--line);border-radius:9px;margin:10px 0;overflow-wrap:anywhere}
+.ok{color:var(--green)}
+.bad{color:var(--red)}
+.metric{background:#0a1726;padding:12px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}
+.metric b{display:block;margin-top:5px;font-size:17px}
+.chartbox{height:310px;width:100%}
+canvas{width:100%;height:100%;display:block}
+.scanline{height:3px;width:0;background:var(--blue);box-shadow:0 0 12px var(--blue);margin:12px 0}
+.scanning .scanline{animation:scan 1s ease-in-out infinite alternate}
+@keyframes scan{to{width:100%}}
+.foot{font-size:12px;line-height:1.5;color:var(--muted)}
+@media(max-width:450px){
+header,main{padding:10px}
+.chartbox{height:250px}
+.value{font-size:19px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>SHAIFAN <span>PRO</span></h1>
+<div class="muted">Live FX data • Technical study dashboard</div>
+</header>
+
+<main>
+
+<div class="toolbar">
+<label>Pair
+<select id="pair">
+<option>EURUSD</option>
+<option>GBPUSD</option>
+<option>USDJPY</option>
+<option>AUDUSD</option>
+<option>USDCAD</option>
+<option>USDCHF</option>
+</select>
+</label>
+
+<label>Timeframe
+<select id="tf">
+<option>5m</option>
+<option selected>15m</option>
+<option>30m</option>
+<option>1h</option>
+<option>4h</option>
+<option>1d</option>
+</select>
+</label>
+
+<button class="primary" id="refresh">Refresh now</button>
+<button id="scan">SCAN / ANALYZE</button>
+</div>
+
+<div class="grid">
+
+<div class="card">
+<div class="label">Mid price</div>
+<div class="value" id="mid">Loading…</div>
+<div class="small" id="quoteTime">Waiting for quote</div>
+</div>
+
+<div class="card">
+<div class="label">Bid / Ask</div>
+<div class="value" id="bidask">—</div>
+<div class="small" id="spread">Spread: —</div>
+</div>
+
+<div class="card">
+<div class="label">Daily change</div>
+<div class="value" id="daily">—</div>
+<div class="small" id="range">Day range: —</div>
+</div>
+
+<div class="card">
+<div class="label">Feed state</div>
+<div class="value" id="state">Connecting…</div>
+<div class="small" id="source">Source: —</div>
+</div>
+
+</div>
+
+<div class="card">
+<div class="label">Provider candlestick chart</div>
+<div class="small" id="chartInfo">Waiting for candles…</div>
+<div class="chartbox">
+<canvas id="chart"></canvas>
+</div>
+</div>
+
+<div class="status" id="status">Connecting to provider…</div>
+
+<div class="card">
+<div class="label">Technical indicators from received candles</div>
+<div class="metrics" style="margin-top:10px">
+
+<div class="metric">EMA 9<b id="ema9">—</b></div>
+<div class="metric">EMA 21<b id="ema21">—</b></div>
+<div class="metric">RSI 14<b id="rsi">—</b></div>
+<div class="metric">MACD 12/26/9<b id="macd">—</b></div>
+<div class="metric">Support (last 30)<b id="support">—</b></div>
+<div class="metric">Resistance (last 30)<b id="resistance">—</b></div>
+<div class="metric">Candles<b id="count">—</b></div>
+<div class="metric">Latest candle time<b id="candleTime">—</b></div>
+
+</div>
+</div>
+
+<div class="card">
+<div class="label">X-ray scan report</div>
+<div id="scanBox">
+<b id="scanTitle">Waiting for data</b>
+<div class="scanline"></div>
+<div id="scanText" class="small">Press scan after data loads.</div>
+</div>
+<div id="report" class="small">No analysis yet.</div>
+</div>
+
+<div class="foot">
+Data is supplied by BiQuote. Different brokers/providers can show slightly different quotes and candle histories. The dashboard shows provider timestamps and errors; it does not invent values or claim unverified predictive probabilities. Educational information only.
+</div>
+
+</main>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+let candles = [], quote = null, busy = false;
+
+const fmt = (n,d=5) =>
+  Number.isFinite(Number(n)) ? Number(n).toFixed(d) : '—';
+
+const stamp = s => {
+  if (!s) return '—';
+  let d = new Date(s);
+  return isNaN(+d) ? String(s) : d.toLocaleString();
+};
+
+const pair = () => $('pair').value;
+
+const base = () => 'https://biquote.io/api/' + pair();
+
+async function getJSON(url) {
+  let r = await fetch(url,{cache:'no-store'});
+  if (!r.ok) throw Error('HTTP ' + r.status + ' ' + url);
+  return r.json();
+}
+
+function ema(a,p) {
+  if (a.length < p) return null;
+  let k = 2/(p+1);
+  let v = a.slice(0,p).reduce((x,y)=>x+y,0)/p;
+  for(let i=p;i<a.length;i++) v=a[i]*k+v*(1-k);
+  return v;
+}
+
+function rsi(a,p=14) {
+  if(a.length<=p) return null;
+  let g=0,l=0;
+
+  for(let i=1;i<=p;i++){
+    let d=a[i]-a[i-1];
+    if(d>0) g+=d;
+    else l-=d;
+  }
+
+  g/=p;
+  l/=p;
+
+  for(let i=p+1;i<a.length;i++){
+    let d=a[i]-a[i-1];
+    g=(g*(p-1)+Math.max(d,0))/p;
+    l=(l*(p-1)+Math.max(-d,0))/p;
+  }
+
+  return l===0 ? (g===0?50:100) : 100-100/(1+g/l);
+}
+
+function macd(a) {
+  if(a.length<35) return null;
+
+  let line=[];
+
+  for(let i=0;i<a.length;i++){
+    let s=a.slice(0,i+1);
+    let x=ema(s,12), y=ema(s,26);
+    if(x!==null && y!==null) line.push(x-y);
+  }
+
+  let sig=ema(line,9);
+
+  return sig===null ? null : {
+    line:line.at(-1),
+    sig,
+    hist:line.at(-1)-sig
+  };
+}
+
+function draw() {
+  let c=$('chart');
+  let r=c.parentElement.getBoundingClientRect();
+  let d=window.devicePixelRatio||1;
+  let W=r.width,H=r.height;
+
+  c.width=Math.max(300,W*d);
+  c.height=H*d;
+
+  let x=c.getContext('2d');
+  x.setTransform(d,0,0,d,0,0);
+  x.clearRect(0,0,W,H);
+
+  if(!candles.length){
+    x.fillStyle='#9cb0c8';
+    x.fillText('No candles received',12,25);
+    return;
+  }
+
+  let a=candles.slice(-65);
+  let lo=Math.min(...a.map(z=>z.l));
+  let hi=Math.max(...a.map(z=>z.h));
+  let pad=(hi-lo)*.07||.0001;
+
+  lo-=pad;
+  hi+=pad;
+
+  let L=8,R=65,T=12,B=22;
+  let cw=W-L-R,ch=H-T-B;
+  let y=v=>T+(hi-v)/(hi-lo)*ch;
+
+  x.font='10px system-ui';
+
+  for(let i=0;i<5;i++){
+    let yy=T+ch*i/4;
+    x.strokeStyle='#20354c';
+    x.beginPath();
+    x.moveTo(L,yy);
+    x.lineTo(W-R,yy);
+    x.stroke();
+
+    x.fillStyle='#9cb0c8';
+    x.fillText((hi-(hi-lo)*i/4).toFixed(5),W-R+4,yy+3);
+  }
+
+  let step=cw/a.length;
+  let bw=Math.max(2,Math.min(9,step*.6));
+
+  a.forEach((z,i)=>{
+    let xx=L+i*step+step/2;
+    let up=z.c>=z.o;
+
+    x.strokeStyle=x.fillStyle=up?'#36d399':'#ff6b7a';
+    x.beginPath();
+    x.moveTo(xx,y(z.h));
+    x.lineTo(xx,y(z.l));
+    x.stroke();
+
+    x.fillRect(
+      xx-bw/2,
+      Math.min(y(z.o),y(z.c)),
+      bw,
+      Math.max(1,Math.abs(y(z.o)-y(z.c)))
+    );
+  });
+
+  x.fillStyle='#9cb0c8';
+  x.fillText(stamp(a[0].t),L,H-5);
+}
+
+function indicators() {
+  let a=candles.map(c=>c.c);
+  let e9=ema(a,9),e21=ema(a,21);
+  let rv=rsi(a),m=macd(a);
+  let recent=candles.slice(-30);
+
+  $('ema9').textContent=fmt(e9);
+  $('ema21').textContent=fmt(e21);
+  $('rsi').textContent=rv===null?'Need 15+ candles':rv.toFixed(2);
+
+  $('macd').textContent=m
+    ? `${m.line.toFixed(6)} / sig ${m.sig.toFixed(6)} / hist ${m.hist.toFixed(6)}`
+    : 'Need 35+ candles';
+
+  $('support').textContent=recent.length
+    ?fmt(Math.min(...recent.map(c=>c.l))):'—';
+
+  $('resistance').textContent=recent.length
+    ?fmt(Math.max(...recent.map(c=>c.h))):'—';
+
+  $('count').textContent=candles.length;
+  $('candleTime').textContent=stamp(candles.at(-1)?.t);
+
+  $('chartInfo').textContent=
+    pair()+' • '+$('tf').value+' • '+candles.length+
+    ' candles • last candle '+stamp(candles.at(-1)?.t);
+}
+
+function normalize(p) {
+  let a=Array.isArray(p)?p:p?.bars;
+
+  if(!Array.isArray(a))
+    throw Error('API response has no bars array');
+
+  let out=a.map(z=>({
+    t:z.openTime||z.time||z.timestamp,
+    o:+z.open,
+    h:+z.high,
+    l:+z.low,
+    c:+z.close,
+    open:!!z.isOpen
+  })).filter(z=>
+    z.t && [z.o,z.h,z.l,z.c].every(Number.isFinite) && z.h>=z.l
+  );
+
+  let m=new Map();
+  out.forEach(z=>m.set(z.t,z));
+
+  return [...m.values()].sort((a,b)=>new Date(a.t)-new Date(b.t));
+}
+
+async function refresh() {
+  if(busy) return;
+
+  busy=true;
+  $('refresh').disabled=true;
+
+  let errors=[];
+
+  try {
+    let [qr,br]=await Promise.allSettled([
+      getJSON(base()+'?_ts='+Date.now()),
+      getJSON(base()+'/ohlc?interval='+
+        encodeURIComponent($('tf').value)+
+        '&limit=200&_ts='+Date.now())
+    ]);
+
+    if(qr.status==='fulfilled') {
+      quote=qr.value;
+
+      let mid=Number(quote.mid??((+quote.bid + +quote.ask)/2));
+
+      if(!Number.isFinite(mid)||mid<=0) {
+        errors.push('Invalid quote payload');
+      } else {
+        $('mid').textContent=fmt(mid);
+        $('bidask').textContent=fmt(quote.bid)+' / '+fmt(quote.ask);
+
+        $('spread').textContent='Spread: '+
+          fmt(quote.spread??(+quote.ask- +quote.bid));
+
+        let ch=Number(quote.dayDiffPercent);
+
+        $('daily').textContent=Number.isFinite(ch)
+          ?(ch>0?'+':'')+ch.toFixed(3)+'%'
+          :'Not provided';
+
+        $('range').textContent=
+          'Day range: '+fmt(quote.low)+' – '+fmt(quote.high);
+
+        $('quoteTime').textContent=
+          'Provider time: '+stamp(quote.timestamp||quote.lastQuoteAt||quote.time)+
+          ' • age '+(quote.quoteAgeSeconds??'?')+' sec';
+
+        $('source').textContent=
+          'Source: '+(quote.source||'not reported')+
+          (quote.stale?' • STALE':'');
+
+        $('state').textContent=
+          quote.stale?'STALE DATA':quote.marketState||'Connected';
+      }
+    } else {
+      errors.push('Quote failed: '+qr.reason.message);
+    }
+
+    if(br.status==='fulfilled') {
+      try {
+        candles=normalize(br.value);
+        draw();
+        indicators();
+
+        if(!candles.length)
+          errors.push('No valid candles returned');
+      } catch(e) {
+        errors.push('Candles failed: '+e.message);
+      }
+    } else {
+      errors.push('Candles failed: '+br.reason.message);
+    }
+
+    $('status').className='status '+(errors.length?'bad':'ok');
+
+    $('status').textContent=errors.length
+      ?errors.join(' | ')
+      :'Live API requests succeeded. Quote and candle feeds may have different underlying sources; compare provider timestamps.';
+
+  } catch(e) {
+    $('status').className='status bad';
+    $('status').textContent='DATA ERROR: '+e.message;
+  } finally {
+    busy=false;
+    $('refresh').disabled=false;
+  }
+}
+
+function scan() {
+  let b=$('scanBox');
+
+  b.classList.add('scanning');
+  $('scanTitle').textContent='Scanning received data…';
+  $('scanText').textContent='Checking real candle history and calculated indicators.';
+
+  setTimeout(()=>{
+    b.classList.remove('scanning');
+
+    if(!quote||!candles.length) {
+      $('scanTitle').textContent='Scan incomplete';
+      $('report').textContent=
+        'Quote or candles are missing. Check the data error above.';
+      return;
+    }
+
+    let a=candles.map(c=>c.c);
+    let e9=ema(a,9),e21=ema(a,21);
+    let rv=rsi(a),m=macd(a);
+
+    $('scanTitle').textContent='Scan complete — factual indicator report';
+    $('scanText').textContent=
+      'Calculated from currently received candles; this is not a future-price prediction.';
+
+    $('report').innerHTML=[
+      'Quote source: '+(quote.source||'not reported'),
+      'Quote age: '+(quote.quoteAgeSeconds??'unknown')+' sec',
+      'Provider stale flag: '+(
+        quote.stale===true?'STALE':
+        quote.stale===false?'not stale':'not supplied'
+      ),
+      'Candles: '+candles.length,
+      'EMA relation: '+(
+        e9===null||e21===null?'insufficient data':
+        e9>e21?'EMA 9 above EMA 21':
+        e9<e21?'EMA 9 below EMA 21':'equal'
+      ),
+      'RSI(14): '+(rv===null?'insufficient data':rv.toFixed(2)),
+      'MACD histogram: '+(m===null?'insufficient data':m.hist.toFixed(6)),
+      'Latest candle: '+stamp(candles.at(-1).t)+
+        (candles.at(-1).open?' (forming)':'')
+    ].map(s=>'• '+s).join('<br>');
+
+  },900);
+}
+
+$('refresh').onclick=refresh;
+$('scan').onclick=scan;
+$('pair').onchange=refresh;
+$('tf').onchange=refresh;
+window.onresize=draw;
+
+refresh();
+setInterval(refresh,10000);
+</script>
+</body>
+</html>
