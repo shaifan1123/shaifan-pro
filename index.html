@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHAIFAN PRO | Market Analyzer</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#08111e;color:#edf5ff;font-family:Arial,sans-serif}
+header{padding:22px 16px;background:#10233a;border-bottom:1px solid #29415d}
+header h1{margin:0;color:#65c8ff;letter-spacing:2px}
+header p{margin:7px 0 0;color:#a7b8cc}
+main{max-width:1050px;margin:auto;padding:16px}
+.notice,.panel{padding:16px;border:1px solid #29415d;border-radius:14px;margin-bottom:16px;background:#101e31}
+.notice{background:#302617;color:#ffe7b7;font-size:14px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,select{padding:12px;border:1px solid #34516f;border-radius:9px;background:#10263f;color:white;font-size:15px}
+button{cursor:pointer}
+button.active{background:#0877bd}
+#chart{height:470px}
+#rating{height:380px}
+.widget{width:100%;height:100%}
+.widget iframe{width:100%;height:100%;border:0}
+.small{color:#a7b8cc;font-size:13px}
+@media(max-width:600px){#chart{height:390px}#rating{height:350px}}
+</style>
+</head>
+<body>
+<header>
+<h1>🦅 SHAIFAN PRO</h1>
+<p>Independent Market Analysis Dashboard</p>
+</header>
+<main>
+<div class="notice">
+<strong>Honest analysis only:</strong> Market widgets are provided by TradingView.
+This version does not calculate its own verified probability or guarantee UP/DOWN
+signals. No automatic trades and no broker passwords are required.
+</div>
+
+<section class="panel">
+<div class="controls">
+<strong>Market:</strong>
+<button id="gold" class="active">Gold XAU/USD</button>
+<button id="eur">EUR/USD</button>
+<label for="tf">Timeframe:</label>
+<select id="tf">
+<option value="5">5 minutes</option>
+<option value="15" selected>15 minutes</option>
+<option value="60">1 hour</option>
+<option value="240">4 hours</option>
+<option value="D">1 day</option>
+</select>
+<button id="scan">Refresh / Scan</button>
+</div>
+</section>
+
+<section class="panel">
+<h2 id="title">Gold XAU/USD Chart</h2>
+<p class="small">Live chart widget, subject to provider availability.</p>
+<div id="chart" class="widget"></div>
+</section>
+
+<section class="panel">
+<h2>Technical Analysis</h2>
+<p class="small">Third-party indicator summary, not a verified success probability.</p>
+<div id="rating" class="widget"></div>
+</section>
+
+<section class="panel">
+<h2>Our next development stage</h2>
+<p>1. Connect actual market candles.</p>
+<p>2. Build our own trend, RSI and MACD analysis engine.</p>
+<p>3. Test historical results before displaying measured probabilities.</p>
+</section>
+</main>
+
+<script>
+const markets = {
+  gold: {symbol:"OANDA:XAUUSD", name:"Gold XAU/USD"},
+  eur: {symbol:"OANDA:EURUSD", name:"EUR/USD"}
+};
+let selected = "gold";
+
+function addWidget(target, url, config) {
+  const container = document.getElementById(target);
+  container.replaceChildren();
+
+  const widget = document.createElement("div");
+  widget.style.width = "100%";
+  widget.style.height = "100%";
+
+  const script = document.createElement("script");
+  script.src = url;
+  script.async = true;
+  script.type = "text/javascript";
+  script.textContent = JSON.stringify(config);
+
+  widget.appendChild(script);
+  container.appendChild(widget);
+}
+
+function render() {
+  const market = markets[selected];
+  const tf = document.getElementById("tf").value;
+  document.getElementById("title").textContent = market.name + " Chart";
+
+  addWidget(
+    "chart",
+    "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js",
+    {
+      autosize:true,
+      symbol:market.symbol,
+      interval:tf,
+      timezone:"Etc/UTC",
+      theme:"dark",
+      style:"1",
+      locale:"en",
+      allow_symbol_change:true,
+      calendar:false,
+      support_host:"https://www.tradingview.com"
+    }
+  );
+
+  const ratingTime = {
+    "5":"5m","15":"15m","60":"1h","240":"4h","D":"1D"
+  }[tf];
+
+  addWidget(
+    "rating",
+    "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js",
+    {
+      interval:ratingTime,
+      width:"100%",
+      isTransparent:true,
+      height:"100%",
+      symbol:market.symbol,
+      showIntervalTabs:true,
+      displayMode:"single",
+      locale:"en",
+      colorTheme:"dark"
+    }
+  );
+}
+
+document.getElementById("gold").onclick = function() {
+  selected = "gold";
+  this.classList.add("active");
+  document.getElementById("eur").classList.remove("active");
+  render();
+};
+
+document.getElementById("eur").onclick = function() {
+  selected = "eur";
+  this.classList.add("active");
+  document.getElementById("gold").classList.remove("active");
+  render();
+};
+
+document.getElementById("tf").onchange = render;
+document.getElementById("scan").onclick = render;
+
+render();
+</script>
+</body>
+</html>
